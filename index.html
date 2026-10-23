@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>还款计划 · 记账还债</title>
+<meta name="theme-color" content="#185fa5" />
+<meta name="description" content="本地优先的还款计划与负债管理工具，支持等额本息/先息后本两种方式。" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<script>window.isPWA = true;</script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    background: #e9edf2; color: #1f2d3d; display: flex; justify-content: center;
+    align-items: center; min-height: 100vh; padding: 0;
+  }
+  .phone {
+    width: 100%; max-width: 414px; height: 100vh; height: 100dvh; background: #f5f7fa;
+    border-radius: 0; box-shadow: none; overflow: hidden; position: relative;
+    display: flex; flex-direction: column; border: none;
+  }
+  .statusbar {
+    height: 36px; background: #185fa5; color: #fff; display: flex;
+    align-items: center; justify-content: space-between; padding: 0 18px;
+    font-size: 13px; font-weight: 600;
+  }
+  .header {
+    height: 52px; background: #185fa5; color: #fff; display: flex;
+    align-items: center; justify-content: center; font-size: 17px; font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .screen { flex: 1; overflow-y: auto; padding: 16px; background: #f5f7fa; }
+  .screen::-webkit-scrollbar { width: 0; }
+  .tabbar {
+    height: 60px; background: #fff; border-top: 1px solid #e3e8ef;
+    display: flex; align-items: stretch;
+  }
+  .tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px; font-size: 11px; color: #9aa6b2; cursor: pointer;
+  }
+  .tab.active { color: #185fa5; }
+  .tab svg { width: 22px; height: 22px; display: block; opacity: .6; }
+  .tab.active svg { opacity: 1; }
+
+  .card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(20,40,80,.05); }
+  .card-title { font-size: 13px; color: #5a6b7b; margin-bottom: 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat { background: #f3f7fc; border-radius: 12px; padding: 12px; }
+  .stat .label { font-size: 12px; color: #5a6b7b; }
+  .stat .value { font-size: 20px; font-weight: 700; color: #185fa5; margin-top: 4px; overflow-wrap: anywhere; }
+  .stat .value.red { color: #e24b4a; }
+  .stat .value.green { color: #3b6d11; }
+
+  .ring-wrap { display: flex; align-items: center; gap: 16px; }
+  .ring-text { flex: 1; min-width: 0; }
+  .ring-text .big { font-size: 26px; font-weight: 800; color: #1f2d3d; overflow-wrap: anywhere; }
+  .ring-text .sub { font-size: 12px; color: #5a6b7b; margin-top: 4px; }
+
+  .debt-card { border-left: 4px solid #185fa5; }
+  .debt-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .debt-name { font-size: 15px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .debt-tag { font-size: 11px; color: #fff; background: #85b7eb; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; white-space: nowrap; }
+  .debt-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 8px; font-size: 12px; color: #5a6b7b; margin-top: 8px; }
+  .debt-bar { height: 8px; background: #eef2f7; border-radius: 6px; margin-top: 8px; overflow: hidden; }
+  .debt-bar > span { display: block; height: 100%; background: linear-gradient(90deg,#185fa5,#37a0dd); }
+
+  .btn { display: block; width: 100%; text-align: center; padding: 13px; border-radius: 12px;
+    background: #185fa5; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; border: none; }
+  .btn.ghost { background: #eaf2fb; color: #185fa5; }
+  .btn.amber { background: #ef9f27; }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: #5a6b7b; margin-bottom: 5px; }
+  .field input, .field select {
+    width: 100%; padding: 11px 12px; border: 1px solid #d8e0ea; border-radius: 10px;
+    font-size: 14px; background: #fbfcfe; color: #1f2d3d;
+  }
+  .seg { display: flex; background: #eef2f7; border-radius: 10px; padding: 4px; }
+  .seg button { flex: 1; border: none; background: transparent; padding: 9px; border-radius: 8px;
+    font-size: 13px; color: #5a6b7b; cursor: pointer; font-weight: 600; }
+  .seg button.on { background: #185fa5; color: #fff; }
+
+  .tx-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 11px 0; border-bottom: 1px solid #f0f3f7; font-size: 14px; }
+  .tx-item:last-child { border-bottom: none; }
+  .tx-amt.in { color: #3b6d11; font-weight: 700; white-space: nowrap; }
+  .tx-amt.out { color: #e24b4a; font-weight: 700; white-space: nowrap; }
+  .tx-meta { font-size: 11px; color: #9aa6b2; }
+
+  .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #eaf2fb; color: #185fa5; }
+  .note { font-size: 12px; color: #9aa6b2; line-height: 1.6; }
+  .timeline { font-size: 12px; color: #5a6b7b; }
+  .tl-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #eef2f7; }
+  .tl-row b { color: #1f2d3d; }
+  .summary-big { font-size: 22px; font-weight: 800; color: #185fa5; overflow-wrap: anywhere; }
+  .hide { display: none; }
+  /* 抽屉/手风琴展开动画：grid 0fr→1fr 实现自适应高度过渡 */
+  .drawer { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .34s cubic-bezier(.4,0,.2,1); }
+  .drawer.open { grid-template-rows: 1fr; }
+  .drawer > .drawer-inner { overflow: hidden; min-height: 0; }
+  .drawer > .drawer-inner > .card { margin-top: 12px; opacity: 0; transform: translateY(-8px); transition: opacity .28s ease .06s, transform .28s ease .06s; }
+  .drawer.open > .drawer-inner > .card { opacity: 1; transform: none; }
+
+  .pickcard { background: #f3f7fc; border-radius: 12px; padding: 12px; display: flex; gap: 10px; }
+  .pick { flex: 1; }
+  .pick label { font-size: 11px; color: #5a6b7b; margin-bottom: 5px; display: block; }
+  /* 自定义下拉组件（替代原生 <select>，参考 Vant / WeUI） */
+  .sel-wrap { position: relative; }
+  .sel-trigger {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 11px 12px; border: 1px solid #d8e0ea; border-radius: 10px; background: #fff;
+    font-size: 14px; color: #1f2d3d; cursor: pointer; text-align: left;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .sel-trigger .sel-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sel-trigger .sel-text.placeholder { color: #9aa6b2; }
+  .sel-trigger .sel-arrow { flex-shrink: 0; transition: transform .2s ease; }
+  .sel-trigger.open .sel-arrow { transform: rotate(180deg); }
+  .sel-trigger:hover { border-color: #b9c6d6; }
+  .sel-trigger:focus, .sel-trigger.open { outline: none; border-color: #185fa5; box-shadow: 0 0 0 3px rgba(24,95,165,.12); }
+  .sel-menu {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 50;
+    background: #fff; border: 1px solid #eef2f7; border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 6px;
+    max-height: 280px; overflow-y: auto;
+    opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  .sel-menu.open { opacity: 1; transform: none; pointer-events: auto; }
+  .sel-option { padding: 11px 14px; border-radius: 8px; font-size: 14px; color: #1f2d3d; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background .15s ease; }
+  .sel-option:hover { background: #f3f7fc; }
+  .sel-option.selected { background: #eaf2fb; color: #185fa5; font-weight: 600; }
+  .sel-option.selected::after { content: "✓"; font-size: 13px; }
+  .field input:focus { outline: none; border-color: #185fa5; box-shadow: 0 0 0 3px rgba(24,95,165,.12); }
+
+  .plan-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #f0f3f7; }
+  .plan-row:last-child { border-bottom: none; }
+  .plan-chk { flex-shrink: 0; }
+  .plan-info { flex: 1; min-width: 0; }
+  .plan-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .plan-amt { flex-shrink: 0; text-align: right; }
+  .badge { display:inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+  .badge.warn { background:#fdecec; color:#e24b4a; }
+  .badge.good { background:#eaf6e6; color:#3b6d11; }
+  .badge.ok { background:#eaf2fb; color:#185fa5; }
+  .banner { display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:12px; font-size:12px; line-height:1.6; margin-bottom:14px; }
+  .banner.warn { background:#fdecec; color:#c23b3a; }
+  .banner.good { background:#eaf6e6; color:#2f5c0e; }
+  .chip { display:inline-block; font-size:12px; padding:6px 12px; border-radius:20px; background:#eef2f7; color:#5a6b7b; cursor:pointer; }
+  .chip:active { background:#185fa5; color:#fff; }
+
+  .toolbar { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .toolbar .chip { flex:1; text-align:center; min-width:80px; }
+  .debt-actions { display:flex; gap:8px; margin-top:12px; }
+  .icon-btn { background:#f3f7fc; border:1px solid #e3e8ef; color:#185fa5; font-size:12px; cursor:pointer; padding:6px 12px; border-radius:9px; }
+  .icon-btn.danger { color:#e24b4a; border-color:#f3c9c9; background:#fdf2f2; }
+  .tx-del { background:none; border:none; color:#c9a; font-size:11px; cursor:pointer; padding:2px 6px; }
+  .empty { text-align:center; padding:46px 24px; color:#9aa6b2; }
+  .empty .big { font-size:42px; margin-bottom:10px; }
+  .empty .t { font-size:15px; color:#5a6b7b; margin-bottom:6px; }
+  .chart-seg { display:flex; background:#eef2f7; border-radius:10px; padding:4px; margin-bottom:10px; }
+  .chart-seg button { flex:1; border:none; background:transparent; padding:8px; border-radius:8px; font-size:12px; color:#5a6b7b; cursor:pointer; font-weight:600; }
+  .chart-seg button.on { background:#fff; color:#185fa5; box-shadow:0 2px 6px rgba(20,40,80,.1); }
+  .priority-tag { font-size:10px; padding:1px 7px; border-radius:10px; background:#fff0d6; color:#b9760a; margin-left:6px; font-weight:600; }
+  .asset-row { display:flex; align-items:center; gap:8px; }
+  .asset-row input { flex:1; }
+  textarea.import-box { width:100%; height:96px; padding:10px; border:1px solid #d8e0ea; border-radius:10px; font-size:12px; resize:none; font-family:monospace; background:#fbfcfe; }
+  .strat-seg { display:flex; background:#eef2f7; border-radius:10px; padding:4px; margin-bottom:12px; }
+  .strat-seg button { flex:1; border:none; background:transparent; padding:9px; border-radius:8px; font-size:12px; color:#5a6b7b; cursor:pointer; font-weight:600; }
+  .strat-seg button.on { background:#185fa5; color:#fff; }
+
+  /* 响应式适配 & 防文字挤压 */
+  @media (min-width: 480px) {
+    body { padding: 20px; }
+    .phone { height: 780px; max-height: 92vh; border-radius: 40px; border: 8px solid #111; box-shadow: 0 20px 60px rgba(20,40,80,.18); }
+  }
+  @media (max-width: 360px) {
+    .screen { padding: 12px; }
+    .card { padding: 13px; margin-bottom: 11px; }
+    .stat .value { font-size: 18px; }
+    .summary-big { font-size: 20px; }
+    .ring-text .big { font-size: 23px; }
+    .debt-name { font-size: 14px; }
+    .tab { font-size: 10px; }
+    .plan-name { font-size: 13px; }
+  }
+  .debt-row > span:first-child { flex: 1; min-width: 0; }
+  .debt-row > span:last-child, .debt-row b { flex-shrink: 0; text-align: right; white-space: nowrap; }
+  /* 还款方式对比盒子 */
+  .cmp-box { background:#f3f8ff; border:1px solid #d8e8f5; border-radius:10px; padding:10px 12px; margin:6px 0 10px; }
+  .cmp-row { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; font-size:12px; padding:5px 0; }
+  .cmp-row > span:first-child { width:62px; color:#5a6b7b; flex-shrink:0; }
+  .cmp-row > b { color:#185fa5; white-space:nowrap; }
+  .cmp-row > span:last-child { color:#9aa6b2; text-align:right; flex:1; min-width:0; }
+  .tx-item > div:first-child { overflow-wrap: anywhere; min-width: 0; }
+  .plan-info { overflow: hidden; }
+
+  /* 删除确认弹窗 */
+  .modal-mask { position: absolute; inset: 0; background: rgba(15,25,40,.45); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 60; }
+  .modal-mask.hide { display: none; }
+  .modal { width: 100%; max-width: 300px; background: #fff; border-radius: 16px; padding: 22px 20px 18px; box-shadow: 0 16px 44px rgba(0,0,0,.28); animation: modalPop .18s ease; }
+  @keyframes modalPop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal-title { font-size: 16px; font-weight: 700; color: #1f2d3d; text-align: center; }
+  .modal-msg { font-size: 13px; color: #5a6b7b; line-height: 1.6; margin-top: 10px; text-align: center; white-space: pre-line; }
+  .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+  .modal-btn { flex: 1; padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; }
+  .modal-btn:active { opacity: .85; }
+  .modal-btn.cancel { background: #eef2f7; color: #5a6b7b; }
+  .modal-btn.danger { background: #e24b4a; color: #fff; }
+
+  /* 保存成功浮层提示 */
+  .toast { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%) translateY(10px); background: rgba(20,40,80,.92); color: #fff; padding: 9px 18px; border-radius: 22px; font-size: 13px; opacity: 0; pointer-events: none; transition: .25s ease; z-index: 70; white-space: nowrap; max-width: 86%; text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>还款计划</span><span>100%</span></div>
+  <div class="header" id="pageTitle">还款看板</div>
+  <div class="screen" id="screen"></div>
+  <div class="tabbar">
+    <div class="tab active" data-tab="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="14"/></svg>
+      看板
+    </div>
+    <div class="tab" data-tab="debts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><line x1="3" y1="11" x2="21" y2="11"/></svg>
+      债务
+    </div>
+    <div class="tab" data-tab="ledger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      记账
+    </div>
+    <div class="tab" data-tab="plan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      计划
+    </div>
+  </div>
+  <div id="modalMask" class="modal-mask hide">
+    <div class="modal">
+      <div class="modal-title" id="modalTitle">删除确认</div>
+      <div class="modal-msg" id="modalMsg"></div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="modalCancel">取消</button>
+        <button class="modal-btn danger" id="modalOk">删除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TODAY = new Date();
+const ym = (d) => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+function ymd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+const todayStr = ymd(TODAY);
+
+const state = {
+  budget: 6000,
+  chartMode: "repaid",
+  strategy: "avalanche",
+  assets: 0,
+  txType: "in",
+  ledgerFilter: { mode:"month", year:TODAY.getFullYear(), month:TODAY.getMonth()+1 },
+  debts: [],
+  tx: [],
+};
+const txYears = [...new Set(state.tx.map(t=>parseInt(t.date.slice(0,4))))].sort();
+let nextId = 100;
+let editId = null;
+let formMethod = "equal"; // 新增/编辑表单当前选中的还款方式：equal(每月等额) / interestOnly(先息后本)
+
+// 本地持久化：用 localStorage 模拟真机 wx.setStorageSync，刷新页面不丢数据
+try {
+  const raw = localStorage.getItem("debtproto_v3");
+  if (raw) {
+    const o = JSON.parse(raw);
+    Object.assign(state, o.state || {});
+    nextId = o.nextId || nextId;
+    const yrs = [...new Set(state.tx.map(t=>parseInt(t.date.slice(0,4))))].sort();
+    txYears.length = 0; yrs.forEach(y=>txYears.push(y));
+  }
+} catch(e){}
+function save() { try { localStorage.setItem("debtproto_v3", JSON.stringify({ state, nextId })); } catch(e){} }
+function toast(msg) {
+  let t = document.getElementById("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    t.className = "toast";
+    const phone = document.querySelector(".phone");
+    (phone || document.body).appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.classList.remove("show"), 1400);
+}
+function resetData() {
+  confirmDelete("清空所有数据", "确定清空所有数据吗？\n此操作不可撤销，当前录入的债务与收支都会被删除，页面将恢复到首次使用的空白状态。", () => {
+    localStorage.removeItem("debtproto_v3"); location.reload();
+  }, "清空");
+}
+function confirmDelete(title, message, onConfirm, okText) {
+  const mask = document.getElementById("modalMask");
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalMsg").textContent = message;
+  const ok = document.getElementById("modalOk");
+  const cancel = document.getElementById("modalCancel");
+  ok.textContent = okText || "删除";
+  ok.onclick = () => { hideModal(); try { onConfirm && onConfirm(); } catch(e) { console.error(e); } };
+  cancel.onclick = hideModal;
+  mask.onclick = (e) => { if (e.target === mask) hideModal(); };
+  mask.classList.remove("hide");
+}
+function hideModal() { document.getElementById("modalMask").classList.add("hide"); }
+
+const money = (n) => "¥" + Math.round(n).toLocaleString("zh-CN");
+const pct = (a,b) => b>0 ? Math.max(0, Math.min(100, Math.round(a/b*100))) : 0;
+const actualOf = (x) => (x.actualPay != null && !isNaN(x.actualPay)) ? x.actualPay : (x.include ? (x.planPay||x.min) : x.min);
+const actualMonthly = () => state.debts.filter(x=>x.include).reduce((s,x)=> s + actualOf(x), 0);
+// 真实月还款（仅来自记账流水），无真实记录则为 null
+const realPay = (x) => (x.actualPay != null && !isNaN(x.actualPay)) ? x.actualPay : null;
+// 设定月还款：用户为每笔债在「计划」页设置的金额，未设置则回退到最低还款
+const planPayOf = (x) => x.include ? (x.planPay || x.min || 0) : (x.min || 0);
+// 纯真实月还款合计（只统计有记账还款的债务）
+const realMonthlyTotal = () => state.debts.filter(x=>x.include).reduce((s,x)=> s + (realPay(x) || 0), 0);
+function recomputeActual() {
+  state.debts.forEach(d=>{
+    const recs = state.tx.filter(t=>t.type==="repay" && t.debtId===d.id);
+    if (!recs.length) { d.actualPay = null; return; }
+    const byMonth = {};
+    recs.forEach(t=>{ const k=t.date.slice(0,7); byMonth[k]=(byMonth[k]||0)+t.amount; });
+    const months = Object.keys(byMonth).length;
+    const total = recs.reduce((s,t)=>s+t.amount,0);
+    d.actualPay = total / months;
+  });
+}
+
+// 还款方式相关计算
+// 月利率
+const mRate = (d) => (d.apr||0)/100/12;
+// 合同月供（按还款方式+期数计算）
+function contractMonthly(d) {
+  const i = mRate(d), n = d.term || 0;
+  if (d.method === "interestOnly") return d.principal * i;          // 先息后本：每月只还利息
+  if (n > 0 && i > 0) { const f = Math.pow(1+i, n); return d.principal * i * f / (f - 1); } // 等额本息
+  if (n > 0 && i === 0) return d.principal / n;                    // 0 利率等额：本金均摊
+  return d.planPay || d.min;                                        // 未设期数：回退计划/最低
+}
+// 合同总利息（按还款方式+期数计算，用于对比展示）
+function contractTotalInterest(d) {
+  const i = mRate(d), n = d.term || 0;
+  if (d.method === "interestOnly") return d.principal * i * (n > 0 ? n : 1);
+  if (n > 0 && i > 0) { const f = Math.pow(1+i, n); const M = d.principal * i * f / (f - 1); return M * n - d.principal; }
+  if (n > 0 && i === 0) return 0;
+  return null; // 期数未知无法估算
+}
+// 同本金/利率/期数下，两种还款方式的月供与总利息对比
+function compareMethods(P, apr, term) {
+  const i = (apr||0)/100/12, n = term || 0;
+  let eqM = 0, eqI = 0, ioM = 0, ioI = 0;
+  if (n > 0) {
+    if (i > 0) { const f = Math.pow(1+i, n); eqM = P*i*f/(f-1); eqI = eqM*n - P; }
+    else { eqM = P/n; eqI = 0; }
+    ioM = P*i; ioI = P*i*n;
+  }
+  return { equal:{monthly:eqM, totalInterest:eqI}, interestOnly:{monthly:ioM, totalInterest:ioI} };
+}
+// 还款方式对比盒子渲染（新增/编辑表单实时更新）
+function renderMethodCmp(prefix) {
+  const box = document.getElementById(prefix + "_cmp");
+  if (!box) return;
+  const P = parseFloat(document.getElementById(prefix + "_principal").value) || 0;
+  const apr = parseFloat(document.getElementById(prefix + "_apr").value) || 0;
+  const term = parseInt(document.getElementById(prefix + "_term").value) || 0;
+  if (P <= 0 || term <= 0) {
+    box.innerHTML = '<div class="note">填写本金与期数后，自动对比「每月等额」与「先息后本」的月供和总利息。</div>';
+    return;
+  }
+  const c = compareMethods(P, apr, term);
+  const diff = c.interestOnly.totalInterest - c.equal.totalInterest;
+  const tip = diff > 0
+    ? `先息后本总利息更高（多 ${money(diff)}），但前期每月只还利息，月供压力更小，到期需一次性还本金。`
+    : (diff < 0 ? `先息后本总利息更低（省 ${money(-diff)}）。` : `两种方式总利息相同。`);
+  box.innerHTML = `
+    <div class="cmp-row"><span>每月等额</span><b>月供 ${money(c.equal.monthly)}</b><span>总利息 ${money(c.equal.totalInterest)}</span></div>
+    <div class="cmp-row"><span>先息后本</span><b>月息 ${money(c.interestOnly.monthly)}</b><span>到期还本 ${money(P)} · 总利息 ${money(c.interestOnly.totalInterest)}</span></div>
+    <div class="note" style="margin-top:6px">同为 ${money(P)}、年利率 ${apr}%、${term} 期：${tip}</div>`;
+}
+
+function calcPlan(payResolver = planPayOf) {
+  const d = state.debts.map(x => ({...x, clearedMonth: null}));
+  let month = 0, totalInterest = 0;
+  const series = [];
+  const max = 480;
+  while (d.some(x => x.balance > 0.01) && month < max) {
+    month++;
+    let repaidThisMonth = 0;
+    d.forEach(x => {
+      if (x.balance > 0.01) {
+        const interest = x.balance * (x.apr/100/12);
+        x.balance += interest;
+        totalInterest += interest;
+        const pay = x.include ? payResolver(x) : (x.min || 0);
+        let p = Math.min(pay, x.balance);
+        // 先息后本：到期月一次性还清剩余本金（含当月利息）
+        if (x.method === "interestOnly" && x.term > 0 && month === x.term && x.balance > 0.01) {
+          p = x.balance;
+        }
+        x.balance -= p;
+        repaidThisMonth += p;
+        if (x.clearedMonth === null && x.balance <= 0.01) x.clearedMonth = month;
+      }
+    });
+    series.push({ month, repaid: repaidThisMonth, remain: d.reduce((s,x)=>s+x.balance,0) });
+  }
+  const clear = new Date(TODAY); clear.setMonth(clear.getMonth() + month);
+  return { d, month, totalInterest, series, clearDate: clear, cleared: month < max };
+}
+
+function renderDashboard() {
+  if (state.debts.length === 0) {
+    document.getElementById("screen").innerHTML = `
+      <div class="empty" style="padding-top:60px">
+        <div class="big">📊</div>
+        <div class="t">还没有债务数据</div>
+        <div class="note">添加你的第一笔债务后，这里会展示还清总进度、预计还清时间、每月还款曲线，以及净资产等全景看板。</div>
+        <button class="btn" style="margin-top:14px;display:inline-block;width:auto;min-width:170px" onclick="switchTab('debts')">＋ 去添加债务</button>
+      </div>
+      <div class="card" style="background:#f3f8ff;border-left:3px solid #85b7eb">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#185fa5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          <div>
+            <div class="card-title" style="margin-bottom:4px">数据仅保存在本机</div>
+            <div class="note">你录入的债务与收支只存储在这台手机上，不会上传到云端。换手机或卸载前，建议先截图备份，否则需在新设备上重新录入。</div>
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
+  const p = calcPlan();
+  const totalDebt = state.debts.reduce((s,x)=>s+x.balance,0);
+  const totalPrincipal = state.debts.reduce((s,x)=>s+x.principal,0);
+  const paid = totalPrincipal - totalDebt;
+  const prog = pct(paid, totalPrincipal);
+  const actual = actualMonthly();
+  const inAll = state.tx.filter(x=>x.type==="in").reduce((s,x)=>s+x.amount,0);
+  const outAll = state.tx.filter(x=>x.type==="out").reduce((s,x)=>s+x.amount,0);
+  const repayAll = state.tx.filter(x=>x.type==="repay").reduce((s,x)=>s+x.amount,0);
+  const curYm = ym(TODAY);
+  const monthTx = state.tx.filter(t=>t.date.startsWith(curYm));
+  const inMonth = monthTx.filter(x=>x.type==="in").reduce((s,x)=>s+x.amount,0);
+  const outMonth = monthTx.filter(x=>x.type==="out").reduce((s,x)=>s+x.amount,0);
+  const repayMonth = monthTx.filter(x=>x.type==="repay").reduce((s,x)=>s+x.amount,0);
+  const freeMonth = inMonth - outMonth - repayMonth;
+  const netAsset = state.assets - totalDebt;
+  const R = 26, C = 2*Math.PI*R, off = C*(1-prog/100);
+  const diff = actual - state.budget;
+  const isRepaid = state.chartMode === "repaid";
+  const chartTitle = isRepaid ? "每月还款金额" : "每月负债余额";
+  const chartColor = isRepaid ? "#ef9f27" : "#185fa5";
+  const chartNote = isRepaid ? "按当前方案，每个月实际还出去的金额。债务逐笔结清后金额会自然下降。" : "每月剩余负债，随还款推进逐月下降直至清零。";
+  document.getElementById("screen").innerHTML = `
+    <div class="card">
+      <div class="card-title">还清总进度</div>
+      <div class="ring-wrap">
+        <svg width="72" height="72" viewBox="0 0 72 72">
+          <circle cx="36" cy="36" r="${R}" fill="none" stroke="#e6edf5" stroke-width="8"/>
+          <circle cx="36" cy="36" r="${R}" fill="none" stroke="#185fa5" stroke-width="8"
+            stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 36 36)"/>
+          <text x="36" y="40" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2d3d">${prog}%</text>
+        </svg>
+        <div class="ring-text">
+          <div class="big">已还 ${money(paid)}</div>
+          <div class="sub">剩余负债 ${money(totalDebt)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">预计还清时间（按设定还款）</div>
+      <div class="summary-big">${p.cleared ? p.month + " 个月" : "无法在 " + 480 + " 个月内还清"}</div>
+      <div class="note" style="margin-top:6px">按你在「计划」页设定的月还款额推算，预计 ${p.clearDate.getFullYear()}年${p.clearDate.getMonth()+1}月 全部结清 · 总利息约 ${money(p.totalInterest)}</div>
+    </div>
+    <div class="grid2">
+      <div class="stat"><div class="label">每月预计还款</div><div class="value">${money(state.budget)}</div></div>
+      <div class="stat"><div class="label">每月实际还款</div><div class="value green">${money(actual)}</div></div>
+    </div>
+    <div class="note" style="margin-bottom:14px">实际还款 = 方案中各债务的月还款之和${diff>0?"（比预算多 "+money(diff)+"）":diff<0?"（比预算少 "+money(-diff)+"）":""}。去「计划」页调整每笔债金额。</div>
+    <div class="card" style="background:#eafaf0;border-left:3px solid #6fae3a">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2f7d16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <div>
+          <div class="card-title" style="margin-bottom:4px;color:#2f7d16">本月可自由支配</div>
+          <div class="summary-big" style="color:#2f7d16;font-size:24px">${freeMonth>=0?"+":""}${money(freeMonth)}</div>
+          <div class="note" style="margin-top:4px">本月收入 ${money(inMonth)} − 消费 ${money(outMonth)} − 还款 ${money(repayMonth)}。这是你本月还能灵活支配的钱。</div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="background:#f3f8ff;border-left:3px solid #85b7eb">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#185fa5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></svg>
+        <div>
+          <div class="card-title" style="margin-bottom:4px">实际还款由记账自动汇总</div>
+          <div class="note">在「记账」页选择「还款」类型并指定债务，记录的金额会自动成为该债的实际月还款，看板与「计划」页随之实时更新。</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">记账累计（从开始到今天）</div>
+      <div class="grid2">
+        <div class="stat"><div class="label">累计总收入</div><div class="value green">${money(inAll)}</div></div>
+        <div class="stat"><div class="label">累计消费</div><div class="value red">${money(outAll)}</div></div>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <div class="stat"><div class="label">累计还款</div><div class="value" style="color:#ef9f27">${money(repayAll)}</div></div>
+        <div class="stat"><div class="label">累计净结余</div><div class="value ${inAll-outAll-repayAll>=0?'green':'red'}">${(inAll-outAll-repayAll)>=0?'+':''}${money(inAll-outAll-repayAll)}</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">净资产（资产 − 负债）</div>
+      <div class="grid2">
+        <div class="stat"><div class="label">总资产</div><div class="value">${money(state.assets)}</div></div>
+        <div class="stat"><div class="label">净资产</div><div class="value ${netAsset>=0?'green':'red'}">${netAsset>=0?'+':''}${money(netAsset)}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <input id="assetInput" type="number" value="${state.assets}" placeholder="录入存款/理财等总资产" style="flex:1;padding:9px;border:1px solid #d8e0ea;border-radius:10px;font-size:14px"/>
+        <button class="btn ghost" style="width:auto;padding:9px 14px" onclick="saveAsset()">更新</button>
+      </div>
+      <div class="note" style="margin-top:6px">净资产 = 总资产 − 剩余负债 ${money(totalDebt)}，反映你真实的财务水位。</div>
+    </div>
+    <div class="card">
+      <div class="card-title">${chartTitle}</div>
+      <div class="chart-seg" id="chartSeg">
+        <button class="${isRepaid?'on':''}" data-v="repaid">每月还款金额</button>
+        <button class="${!isRepaid?'on':''}" data-v="remain">每月负债余额</button>
+      </div>
+      ${lineChart(p.series, isRepaid ? (d=>d.repaid) : (d=>d.remain), chartColor)}
+      <div class="note" style="margin-top:6px">${chartNote}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">每月预计还款（预算）</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="bdg" type="number" value="${state.budget}" style="flex:1;padding:10px;border:1px solid #d8e0ea;border-radius:10px;font-size:15px"/>
+        <button class="btn ghost" style="width:auto;padding:10px 16px" onclick="saveBudget()">更新</button>
+      </div>
+      <div class="note" style="margin-top:8px">预算仅作参考对比；真正驱动还清时间的是「计划」里的实际还款方案。</div>
+    </div>
+    <div class="card" style="background:#f3f8ff;border-left:3px solid #85b7eb">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#185fa5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <div>
+          <div class="card-title" style="margin-bottom:4px">数据仅保存在本机</div>
+          <div class="note">你录入的债务与收支只存储在这台手机上，不会上传到云端。换手机或卸载前，建议先截图备份，否则需在新设备上重新录入。</div>
+          <div style="margin-top:8px"><span class="chip" onclick="resetData()">清空所有数据</span></div>
+        </div>
+      </div>
+    </div>`;
+  document.querySelectorAll("#chartSeg button").forEach(b=>{
+    b.onclick = ()=>{ state.chartMode = b.dataset.v; renderDashboard(); save(); };
+  });
+}
+
+function lineChart(data, valFn, color) {
+  const ds = data.slice(0, 6);
+  if (!ds.length) return "";
+  const vals = ds.map(valFn);
+  const max = Math.max(...vals, 1);
+  const W = 300, H = 92, pad = 6;
+  const pts = ds.map((d,i)=>{
+    const x = pad + i*(W-2*pad)/(Math.max(1,ds.length-1));
+    const y = H-pad - (valFn(d)/max)*(H-2*pad);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const labels = ds.map((d,i)=>`<span style="flex:1;text-align:center;font-size:10px;color:#9aa6b2">${i+1}月</span>`).join("");
+  return `<svg width="100%" viewBox="0 0 ${W} ${H}" style="margin-top:6px;display:block">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="${pad},${H-pad} ${pts} ${W-pad},${H-pad}" fill="${color}14"/>
+  </svg>
+  <div style="display:flex;margin-top:2px">${labels}</div>
+  <div style="text-align:right;font-size:10px;color:#9aa6b2;margin-top:2px">峰值 ${money(max)}</div>`;
+}
+
+// 编辑表单：内联在对应债务卡片下方，字段 id 唯一前缀 e_${d.id}
+const TYPE_OPTS = ["信用卡","网贷","消费分期","亲友借款","其他"];
+
+const selCallbacks = {};
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function customSelectHTML({id, value, placeholder, options}) {
+  const opts = options.map(o => typeof o === 'string' ? {value:o, label:o} : o);
+  const match = opts.find(o => String(o.value) === String(value));
+  const display = match ? match.label : (value ? String(value) : '');
+  const arrow = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9aa6b2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+  return `<div class="sel-wrap" id="${id}_wrap">
+    <button type="button" class="sel-trigger" onclick="toggleSel('${id}')" aria-haspopup="listbox">
+      <span class="sel-text ${display?'':'placeholder'}">${display || placeholder}</span>
+      <span class="sel-arrow">${arrow}</span>
+    </button>
+    <div class="sel-menu" id="${id}_menu" role="listbox">
+      ${opts.map(o => `<div class="sel-option ${String(o.value)===String(value)?'selected':''}" data-v="${escapeHtml(o.value)}" onclick="pickSel(this)" role="option">${escapeHtml(o.label)}</div>`).join('')}
+    </div>
+    <input type="hidden" id="${id}" value="${escapeHtml(value)}"/>
+  </div>`;
+}
+function toggleSel(id) {
+  const menu = document.getElementById(id + '_menu');
+  const trig = document.querySelector('#' + id + '_wrap .sel-trigger');
+  const wasOpen = menu && menu.classList.contains('open');
+  closeAllSel();
+  if (menu && !wasOpen) { menu.classList.add('open'); trig && trig.classList.add('open'); }
+}
+function closeAllSel() {
+  document.querySelectorAll('.sel-menu.open').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.sel-trigger.open').forEach(t => t.classList.remove('open'));
+}
+function pickSel(el) {
+  const val = el.dataset.v;
+  const wrap = el.closest('.sel-wrap');
+  const input = wrap.querySelector('input[type=hidden]');
+  const trigText = wrap.querySelector('.sel-text');
+  input.value = val;
+  trigText.textContent = el.textContent;
+  trigText.classList.remove('placeholder');
+  wrap.querySelectorAll('.sel-option').forEach(o => o.classList.toggle('selected', o.dataset.v === val));
+  closeAllSel();
+  const id = input.id;
+  if (selCallbacks[id]) selCallbacks[id](val);
+}
+document.addEventListener('click', e => { if (!e.target.closest('.sel-wrap')) closeAllSel(); });
+function onSelChange(id, cb) { selCallbacks[id] = cb; }
+
+function editFormFor(d) {
+  const p = "e_" + d.id;
+  return `<div class="card">
+    <div class="card-title">编辑「${d.name}」</div>
+    <div class="field"><label>名称</label><input id="${p}_name" value="${d.name}"/></div>
+    <div class="field"><label>类型</label>${customSelectHTML({id:p+'_type', value:d.type, placeholder:'请选择类型', options:TYPE_OPTS})}</div>
+    <div class="field"><label>剩余本金（元）</label><input id="${p}_principal" type="number" value="${d.balance}"/></div>
+    <div class="field"><label>年利率 %（亲友借款填 0）</label><input id="${p}_apr" type="number" value="${d.apr}"/></div>
+    <div class="field"><label>每月最低还款（元）</label><input id="${p}_min" type="number" value="${d.min}"/></div>
+    <div class="field"><label>还款方式</label>
+      <div class="seg" id="${p}_method">
+        <button class="${d.method!=="interestOnly"?"on":""}" data-v="equal">每月等额</button>
+        <button class="${d.method==="interestOnly"?"on":""}" data-v="interestOnly">先息后本</button>
+      </div>
+    </div>
+    <div class="field"><label>期数（月，如 12 期）</label><input id="${p}_term" type="number" value="${d.term||""}"/></div>
+    <div id="${p}_cmp" class="cmp-box"></div>
+    <div class="field"><label>每月还款日</label><input id="${p}_due" type="number" value="${d.due}"/></div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn" style="flex:1" onclick="updateDebt()">保存</button>
+      <button class="btn ghost" style="flex:1" onclick="hideEditDebtForm()">取消</button>
+    </div>
+  </div>`;
+}
+
+// 新增表单（字段 id 唯一前缀 d_）
+function addFormHTML() {
+  return `<div class="card">
+    <div class="card-title">新增一笔债务</div>
+    <div class="field"><label>名称</label><input id="d_name" placeholder="请输入"/></div>
+    <div class="field"><label>类型</label>${customSelectHTML({id:'d_type', value:'', placeholder:'请选择类型', options:TYPE_OPTS})}</div>
+    <div class="field"><label>当前本金（元）</label><input id="d_principal" type="number" placeholder="请输入"/></div>
+    <div class="field"><label>年利率 %（亲友借款填 0）</label><input id="d_apr" type="number" placeholder="请输入"/></div>
+    <div class="field"><label>每月最低还款（元）</label><input id="d_min" type="number" placeholder="请输入"/></div>
+    <div class="field"><label>还款方式</label>
+      <div class="seg" id="d_method">
+        <button class="${formMethod==="equal"?"on":""}" data-v="equal">每月等额</button>
+        <button class="${formMethod==="interestOnly"?"on":""}" data-v="interestOnly">先息后本</button>
+      </div>
+    </div>
+    <div class="field"><label>期数（月，如 12 期）</label><input id="d_term" type="number" placeholder="请输入" value="${formMethod==="interestOnly"?"12":""}"/></div>
+    <div id="d_cmp" class="cmp-box"></div>
+    <div class="field"><label>每月还款日</label><input id="d_due" type="number" placeholder="请输入"/></div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn" style="flex:1" onclick="addDebt()">保存</button>
+      <button class="btn ghost" style="flex:1" onclick="hideDebtForm()">取消</button>
+    </div>
+  </div>`;
+}
+
+function renderDebts() {
+  const p = calcPlan();
+  const totalDebt = state.debts.reduce((s,x)=>s+x.balance,0);
+  const cards = state.debts.map(d=>{
+    const cleared = d.balance <= 0.01;
+    const prog = pct(d.principal - d.balance, d.principal);
+    return `<div class="card debt-card" style="${cleared?'border-left-color:#3b6d11':''}">
+      <div class="debt-head"><span class="debt-name">${d.name}</span>
+        <span>${cleared?'<span class="debt-tag" style="background:#3b6d11">✓ 已结清</span>':'<span class="debt-tag">'+d.type+'</span>'}</span></div>
+      <div class="debt-row"><span>剩余本金</span><b>${money(d.balance)}</b></div>
+      <div class="debt-row"><span>年利率 / 最低还款</span><span>${d.apr}% · ${money(d.min)}/月</span></div>
+      <div class="debt-row"><span>还款方式</span><b>${d.method==="interestOnly"?"先息后本":"等额本息"}</b></div>
+      <div class="debt-row"><span>合同月供 / 期数</span><b>${money(contractMonthly(d))}${d.method==="interestOnly"?" + 到期还本":""} · ${d.term||"-"}期</b></div>
+      <div class="debt-bar"><span style="width:${prog}%;${cleared?'background:linear-gradient(90deg,#3b6d11,#6fae3a)':''}"></span></div>
+      <div class="debt-row"><span>已还进度</span><span>${cleared?'🎉 全部还清':prog+'%'}</span></div>
+      <div class="debt-actions">
+        <button class="icon-btn" onclick="editDebt(${d.id})">✏️ 编辑</button>
+        <button class="icon-btn danger" onclick="deleteDebt(${d.id})">🗑 删除</button>
+      </div>
+    </div>
+    <div class="drawer" id="editDrawer_${d.id}"><div class="drawer-inner">${editFormFor(d)}</div></div>`;
+  }).join("");
+  const empty = state.debts.length === 0
+    ? `<div class="empty"><div class="big">💳</div><div class="t">还没有任何债务</div><div class="note">添加你的第一笔债务，开始规划还清路线。</div><button class="btn" style="margin-top:14px;display:inline-block;width:auto;min-width:170px" onclick="showDebtForm()">＋ 新增债务</button></div>` : "";
+  document.getElementById("screen").innerHTML = `
+    ${empty}
+    <div class="card">
+      <div class="card-title">总览</div>
+      <div class="grid2">
+        <div class="stat"><div class="label">总债务</div><div class="value red">${money(totalDebt)}</div></div>
+        <div class="stat"><div class="label">预计总利息</div><div class="value">${money(p.totalInterest)}</div></div>
+      </div>
+      <div class="note" style="margin-top:8px">共 ${state.debts.length} 笔债务（先息后本 ${state.debts.filter(x=>x.method==="interestOnly").length} 笔）· 按设定还款预计 ${p.month} 个月还清</div>
+    </div>
+    ${cards}
+    ${state.debts.length ? '<button class="btn" onclick="showDebtForm()">＋ 新增债务</button>' : ''}
+    <div class="drawer" id="addDrawer"><div class="drawer-inner">${addFormHTML()}</div></div>
+    <div class="card" style="margin-top:18px"><div class="note">在「计划」页为每笔债设置月还款金额，看板会按此自动计算还清时间与总利息。</div></div>`;
+  // 还款方式分段控件 + 实时利息对比
+  const wireMethod = (prefix) => {
+    const seg = document.getElementById(prefix + "_method");
+    if (!seg) return;
+    seg.querySelectorAll("button").forEach(b=>{
+      b.onclick = () => {
+        formMethod = b.dataset.v;
+        seg.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+        b.classList.add("on");
+        const t = document.getElementById(prefix + "_term");
+        if (formMethod === "interestOnly" && t && !t.value) t.value = 12;
+        renderMethodCmp(prefix);
+      };
+    });
+    ["principal","apr","term"].forEach(k=>{
+      const el = document.getElementById(prefix + "_" + k);
+      if (el) el.oninput = () => renderMethodCmp(prefix);
+    });
+    renderMethodCmp(prefix);
+  };
+  wireMethod("d");
+  state.debts.forEach(d => wireMethod("e_" + d.id));
+}
+
+function renderLedger() {
+  const f = state.ledgerFilter;
+  const y = f.year, m = f.month;
+  const prefix = f.mode === "year" ? (y + "-") : (y + "-" + String(m).padStart(2, "0"));
+  const periodLabel = f.mode === "year" ? (y + " 全年") : (y + "年" + m + "月");
+  const sel0 = state.tx.filter(t => t.date.startsWith(prefix));
+  const inSum = sel0.filter(x=>x.type==="in").reduce((s,x)=>s+x.amount,0);
+  const outSum = sel0.filter(x=>x.type==="out").reduce((s,x)=>s+x.amount,0);
+  const repaySum = sel0.filter(x=>x.type==="repay").reduce((s,x)=>s+x.amount,0);
+  const net = inSum - outSum - repaySum;
+  const todayTx = state.tx.filter(x=>x.date===todayStr);
+  const inToday = todayTx.filter(x=>x.type==="in").reduce((s,x)=>s+x.amount,0);
+  const outToday = todayTx.filter(x=>x.type==="out").reduce((s,x)=>s+x.amount,0);
+  const repayToday = todayTx.filter(x=>x.type==="repay").reduce((s,x)=>s+x.amount,0);
+  const list = [...sel0].reverse().map(t=>{
+    const isIn = t.type==="in";
+    const isRepay = t.type==="repay";
+    const label = isRepay ? ("还款·"+(state.debts.find(d=>d.id===t.debtId)?.name||"")+(t.note?(" · "+t.note):"")) : (t.cat+(t.note?(" · "+t.note):""));
+    return `<div class="tx-item">
+      <div style="flex:1;min-width:0"><div>${label}</div><div class="tx-meta">${t.date}</div></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <div class="tx-amt ${isIn?"in":"out"}">${isIn?"+":"-"}${money(t.amount)}</div>
+        <button class="tx-del" onclick="deleteTx(${t.id})">删除</button>
+      </div>
+    </div>`;
+  }).join("");
+  const isCurMonth = f.mode === "month" && f.year === TODAY.getFullYear() && f.month === TODAY.getMonth()+1;
+  const empty = state.tx.length === 0
+    ? `<div class="empty"><div class="big">📒</div><div class="t">还没有任何记录</div><div class="note">在上方「记一笔」开始记录你的收入、支出与还款。</div><button class="btn" style="margin-top:14px;display:inline-block;width:auto;min-width:170px" onclick="document.getElementById('t_amt').focus()">✍️ 去记一笔</button></div>`
+    : (sel0.length === 0 ? `<div class="empty"><div class="t">该周期还没有记录</div><div class="note">${isCurMonth ? '本月还没有记录，在上方「记一笔」开始记录吧。' : '当前筛选的周期没有记录，换个周期查看，或在上方「记一笔」。'}</div>${isCurMonth ? '' : '<button class="btn" style="margin-top:14px;display:inline-block;width:auto;min-width:150px" onclick="state.ledgerFilter={mode:\'month\',year:TODAY.getFullYear(),month:TODAY.getMonth()+1}; renderLedger(); save();">↩ 切回本月</button>'}</div>` : "");
+  document.getElementById("screen").innerHTML = `
+    <div class="card">
+      <div class="card-title">今日收支（${todayStr}）</div>
+      <div class="grid2">
+        <div class="stat"><div class="label">今日收入</div><div class="value green">${money(inToday)}</div></div>
+        <div class="stat"><div class="label">今日消费</div><div class="value red">${money(outToday)}</div></div>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <div class="stat"><div class="label">今日还款</div><div class="value" style="color:#ef9f27">${money(repayToday)}</div></div>
+        <div class="stat"><div class="label">今日结余</div><div class="value ${inToday-outToday-repayToday>=0?'green':'red'}">${inToday-outToday-repayToday>=0?'+':''}${money(inToday-outToday-repayToday)}</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">统计周期</div>
+      <div class="seg" id="lfmode">
+        <button class="${f.mode==="month"?"on":""}" data-v="month">本月</button>
+        <button class="${f.mode==="year"?"on":""}" data-v="year">本年</button>
+        <button class="${f.mode==="custom"?"on":""}" data-v="custom">选月份</button>
+      </div>
+      ${f.mode==="custom" ? `<div class="pickcard" style="margin-top:12px">
+        <div class="pick"><label>年份</label>${customSelectHTML({id:"ly", value:y, placeholder:"选择年份", options:txYears.map(yr=>({value:yr,label:yr+"年"}))})}</div>
+        <div class="pick"><label>月份</label>${customSelectHTML({id:"lm", value:m, placeholder:"选择月份", options:Array.from({length:12},(_,i)=>({value:i+1,label:(i+1)+"月"}))})}</div>
+      </div>` : ""}
+    </div>
+    <div class="card">
+      <div class="card-title">${periodLabel} 收支汇总</div>
+      <div class="grid2">
+        <div class="stat"><div class="label">总收入</div><div class="value green">${money(inSum)}</div></div>
+        <div class="stat"><div class="label">总消费</div><div class="value red">${money(outSum)}</div></div>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <div class="stat"><div class="label">总还款</div><div class="value" style="color:#ef9f27">${money(repaySum)}</div></div>
+        <div class="stat"><div class="label">净结余</div><div class="value ${net>=0?'green':'red'}">${net>=0?"+":""}${money(net)}</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">记一笔</div>
+      <div class="seg" id="txType">
+        <button class="${state.txType==='in'?'on':''}" data-v="in">收入</button>
+        <button class="${state.txType==='out'?'on':''}" data-v="out">支出</button>
+        <button class="${state.txType==='repay'?'on':''}" data-v="repay">还款</button>
+      </div>
+      <div class="field" style="margin-top:12px" id="catField"><label>分类</label><input id="t_cat" placeholder="请输入"/>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${["工资","兼职","房租","餐饮","交通","购物","医疗","其他"].map(c=>`<span class="chip" onclick="setCat('${c}')">${c}</span>`).join("")}</div>
+      </div>
+      <div class="field" style="margin-top:12px;display:none" id="debtField"><label>还款债务</label>${customSelectHTML({id:'t_debt', value:state.debts[0]?state.debts[0].id:'', placeholder:'请选择债务', options:state.debts.map(d=>({value:d.id,label:d.name}))})}</div>
+      <div class="field"><label>金额（元）</label><input id="t_amt" type="number" placeholder="请输入"/></div>
+      <div class="field"><label>备注</label><input id="t_note" placeholder="选填"/></div>
+      <button type="button" class="btn" onclick="addTx()">保存</button>
+    </div>
+    <div class="toolbar">
+      <span class="chip" onclick="exportData()">⬇ 导出备份</span>
+      <span class="chip" onclick="showImport()">⬆ 导入备份</span>
+      <span class="chip" onclick="exportCsv()">📄 导出CSV</span>
+    </div>
+    <div class="card"><div class="card-title">${periodLabel} 明细</div>${list}${empty}</div>
+    <div id="importForm" class="hide" style="margin-top:12px">
+      <div class="card">
+        <div class="card-title">导入备份（粘贴之前导出的 JSON）</div>
+        <textarea id="importBox" class="import-box" placeholder='{"state":{...},"nextId":100}'></textarea>
+        <div style="display:flex;gap:10px;margin-top:10px">
+          <button class="btn" style="flex:1" onclick="importData()">恢复</button>
+          <button class="btn ghost" style="flex:1" onclick="hideImport()">取消</button>
+        </div>
+        <div class="note" style="margin-top:8px">导入会覆盖当前全部数据，请确认。</div>
+      </div>
+    </div>`;
+  document.querySelectorAll("#txType button").forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll("#txType button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      state.txType = b.dataset.v;
+      const v = b.dataset.v;
+      document.getElementById("catField").style.display = (v==="repay") ? "none" : "block";
+      document.getElementById("debtField").style.display = (v==="repay") ? "block" : "none";
+    };
+  });
+  document.querySelectorAll("#lfmode button").forEach(b=>{
+    b.onclick = ()=>{
+      state.ledgerFilter.mode = b.dataset.v;
+      if (b.dataset.v === "month") { state.ledgerFilter.year = TODAY.getFullYear(); state.ledgerFilter.month = TODAY.getMonth()+1; }
+      renderLedger();
+    };
+  });
+  if (f.mode === "custom") {
+    onSelChange("ly", v=>{ state.ledgerFilter.year = +v; renderLedger(); });
+    onSelChange("lm", v=>{ state.ledgerFilter.month = +v; renderLedger(); });
+  }
+}
+
+function renderPlan() {
+  if (state.debts.length === 0) {
+    document.getElementById("screen").innerHTML = `<div class="empty" style="margin-top:40px"><div class="big">📋</div><div class="t">还没有可规划的债务</div><div class="note">去「债务」页新增一笔，再回到这里设置每月还款。</div><button class="btn" style="margin-top:14px;display:inline-block;width:auto;min-width:170px" onclick="switchTab('debts')">＋ 去添加债务</button></div>`;
+    return;
+  }
+  const p = calcPlan();
+  const actual = realMonthlyTotal();
+  const totalSet = state.debts.filter(x=>x.include).reduce((s,x)=> s + (x.planPay||x.min), 0);
+  let banner = "";
+  if (actual < totalSet - 0.01) banner = `<div class="banner warn">⚠ 实际总还款比计划少 ${money(totalSet-actual)}：还清时间将延后，建议尽量补足计划金额。</div>`;
+  else if (actual > totalSet + 0.01) banner = `<div class="banner good">👍 实际总还款比计划多 ${money(actual-totalSet)}：进度领先，提前结清在望！</div>`;
+  const isCleared = x => (state.debts.find(d=>d.id===x.id)?.balance||0) <= 0.01;
+  const sorted = [...p.d].sort((a,b)=>{
+    const ca = isCleared(a), cb = isCleared(b);
+    if (ca !== cb) return ca ? 1 : -1;
+    if (state.strategy==="snowball") return (a.balance||0)-(b.balance||0);
+    return (b.apr||0)-(a.apr||0);
+  });
+  const firstId = sorted.find(x=>!isCleared(x))?.id;
+  const rows = sorted.map(d=>{
+    const orig = state.debts.find(x=>x.id===d.id) || d;
+    const a = realPay(d), s = d.planPay||d.min;
+    let badge = `<span class="badge ok">✓ 按计划</span>`;
+    if (a == null) badge = `<span class="badge warn">未记账还款</span>`;
+    else if (a < s - 0.01) badge = `<span class="badge warn">⚠ 还款偏少</span>`;
+    else if (a > s + 0.01) badge = `<span class="badge good">👍 超出鼓励</span>`;
+    const cleared = orig.balance <= 0.01;
+    const priority = (!cleared && d.id===firstId) ? `<span class="priority-tag">建议优先</span>` : "";
+    return `<div class="plan-row">
+      <div class="plan-info">
+        <div class="plan-name">${d.name} <span class="debt-tag" style="${cleared?'background:#3b6d11':''}">${cleared?'✓ 已结清':d.type}</span>${priority}</div>
+        <div class="tx-meta">欠款余额 ${money(orig.balance)} · 利率 ${d.apr}% · ${d.method==="interestOnly"?"先息后本":"等额本息"}</div>
+        <div class="tx-meta" style="margin-top:2px">合同月供 ${money(contractMonthly(d))}${d.method==="interestOnly"?" + 到期还本 "+money(d.principal):""}</div>
+        <div class="tx-meta" style="margin-top:2px">${cleared?'🎉 已全部还清':('实际月还款 '+(a!=null?money(a):'未记账')+' '+badge)}</div>
+      </div>
+      <div class="plan-amt">
+        <input type="number" value="${d.planPay||d.min}" onchange="savePlanPay(${d.id}, this.value)" style="width:84px;padding:8px 8px;border:1px solid #d8e0ea;border-radius:8px;font-size:14px;text-align:right"/>
+        <div class="tx-meta">${cleared?'已结清':(d.clearedMonth?("第 "+d.clearedMonth+" 月结清"):"无法结清")}</div>
+      </div>
+    </div>`;
+  }).join("");
+  const stratLabel = state.strategy==="avalanche" ? "雪崩法（利率高者优先）" : "雪球法（余额小者优先）";
+  document.getElementById("screen").innerHTML = `
+    ${banner}
+    <div class="card">
+      <div class="card-title">还款优先级策略</div>
+      <div class="strat-seg" id="stratSeg">
+        <button class="${state.strategy==='avalanche'?'on':''}" data-v="avalanche">雪崩法·高息优先</button>
+        <button class="${state.strategy==='snowball'?'on':''}" data-v="snowball">雪球法·小额优先</button>
+      </div>
+      <div class="note">${stratLabel}。排在最前且带「建议优先」的债务，是综合当前利率/余额最该优先多还的一笔，还清后总利息最少（雪崩）或心理反馈最快（雪球）。</div>
+    </div>
+    <div class="card">
+      <div class="card-title">为每笔债务设置月还款金额</div>
+      <div class="note">下方时间线按你在「计划」页设定的月还款额推算；未单独设置金额的债务会按合同最低还款估算。先息后本的债务按「每月只还利息 + 到期一次性还本」计算，时间线会在到期月结清。</div>
+    </div>
+    <div class="card">${rows}</div>
+    <div class="card">
+      <div class="card-title">方案结论</div>
+      <div class="grid2">
+        <div class="stat"><div class="label">实际总还款 / 月</div><div class="value green">${money(actual)}</div></div>
+        <div class="stat"><div class="label">预计还清</div><div class="value">${p.cleared ? p.month+" 个月" : "超 "+480+" 月"}</div></div>
+      </div>
+      <div class="note" style="margin-top:8px">设定合计 ${money(totalSet)}/月 · 预计 ${p.clearDate.getFullYear()}年${p.clearDate.getMonth()+1}月 全部结清 · 总利息约 ${money(p.totalInterest)}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">还清时间线</div>
+      ${timelineBars(p)}
+      <div class="note" style="margin-top:6px">每根条代表一笔债，越短 = 越早还清。</div>
+    </div>`;
+  document.querySelectorAll("#stratSeg button").forEach(b=>{
+    b.onclick = ()=>{ state.strategy = b.dataset.v; renderPlan(); save(); };
+  });
+}
+
+function timelineBars(p) {
+  const total = Math.max(1, p.month);
+  return [...p.d].sort((a,b)=>(a.clearedMonth||999)-(b.clearedMonth||999)).map(d=>{
+    const orig = state.debts.find(x=>x.id===d.id);
+    const reallyCleared = (orig ? orig.balance : d.balance) <= 0.01;
+    const done = d.clearedMonth != null;
+    const w = done ? Math.min(100, d.clearedMonth/total*100) : 100;
+    const color = reallyCleared ? "#3b6d11" : (done ? "#ef9f27" : "#e24b4a");
+    const label = reallyCleared ? "已结清" : (done ? ("第 "+d.clearedMonth+" 月结清") : "超期未清");
+    const rp = realPay(d);
+    const src = reallyCleared ? "已结清 · 无需再还" : (rp != null ? ("真实 "+money(rp)+"/月") : ("最低还款 "+money(d.min||0)+"/月（未记账）"));
+    return `<div style="margin:10px 0">
+      <div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#5a6b7b;margin-bottom:4px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.name}</span><span style="flex-shrink:0">${label}</span></div>
+      <div style="height:10px;background:#eef2f7;border-radius:6px;overflow:hidden"><span style="display:block;height:100%;width:${w}%;background:${color}"></span></div>
+      <div style="font-size:10px;color:#9aa6b2;margin-top:3px">${src}</div>
+    </div>`;
+  }).join("");
+}
+
+function saveBudget() {
+  const v = parseFloat(document.getElementById("bdg").value);
+  if (!isNaN(v) && v > 0) { state.budget = v; renderDashboard(); save(); }
+}
+function saveAsset() {
+  const v = parseFloat(document.getElementById("assetInput").value);
+  state.assets = (!isNaN(v) && v >= 0) ? v : 0;
+  renderDashboard(); save();
+}
+function savePlanPay(id, val) {
+  const debt = state.debts.find(x=>x.id===id);
+  const v = parseFloat(val);
+  if (debt && !isNaN(v) && v >= 0) debt.planPay = v;
+  renderPlan(); save();
+}
+function setCat(c) { const el = document.getElementById("t_cat"); if (el) el.value = c; }
+function smoothScroll(el) { try { if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e){} }
+function showDebtForm() {
+  // 收起其它已展开的抽屉（含其它编辑抽屉）
+  document.querySelectorAll('.drawer.open').forEach(x=>x.classList.remove('open'));
+  const ad = document.getElementById('addDrawer');
+  if (ad) {
+    ad.classList.add('open');
+    // 新增默认回到「每月等额」
+    formMethod = 'equal';
+    const seg = document.getElementById('d_method');
+    if (seg) seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v==='equal'));
+    const t = document.getElementById('d_term'); if (t) t.value = '';
+    renderMethodCmp('d');
+    smoothScroll(ad);
+  }
+}
+function hideDebtForm() { const ad = document.getElementById('addDrawer'); if (ad) ad.classList.remove('open'); }
+function addDebt() {
+  const name = document.getElementById("d_name").value.trim();
+  if (!name) { toast("请输入债务名称"); return; }
+  const type = document.getElementById("d_type").value;
+  if (!type) { toast("请选择债务类型"); return; }
+  const principal = parseFloat(document.getElementById("d_principal").value);
+  if (isNaN(principal) || principal <= 0) { toast("请输入有效本金"); return; }
+  const apr = parseFloat(document.getElementById("d_apr").value);
+  if (isNaN(apr) || apr < 0) { toast("请输入年利率（亲友借款填 0）"); return; }
+  let min = parseFloat(document.getElementById("d_min").value);
+  if (formMethod === "interestOnly") {
+    // 先息后本：最低还款即每月利息，留空自动按利息计算，不强制填写
+    min = (isNaN(min) || min <= 0) ? Math.round(principal * (apr/100/12)) : min;
+  } else if (isNaN(min) || min < 0) {
+    toast("请输入每月最低还款"); return;
+  }
+  const term = parseInt(document.getElementById("d_term").value);
+  if (isNaN(term) || term <= 0) { toast("请输入期数（月）"); return; }
+  const due = parseInt(document.getElementById("d_due").value);
+  if (isNaN(due) || due < 1 || due > 31) { toast("请输入还款日（1-31）"); return; }
+  state.debts.push({
+    id: nextId++, name,
+    type: document.getElementById("d_type").value,
+    principal, balance: principal,
+    apr,
+    min, due: parseInt(document.getElementById("d_due").value)||1,
+    include: true, planPay: min,
+    method: formMethod, term,
+  });
+  renderDebts(); save();
+}
+function editDebt(id) {
+  const d = state.debts.find(x=>x.id===id);
+  if (!d) return;
+  editId = id;
+  formMethod = d.method || "equal";
+  // 收起新增抽屉与其它编辑抽屉，仅展开当前债务对应的抽屉
+  document.querySelectorAll('.drawer.open').forEach(x=>{ if (x.id !== 'editDrawer_'+id) x.classList.remove('open'); });
+  const dr = document.getElementById('editDrawer_'+id);
+  if (dr) { dr.classList.add('open'); smoothScroll(dr); }
+  renderMethodCmp('e_'+id);
+}
+function hideEditDebtForm() {
+  if (editId != null) { const dr = document.getElementById('editDrawer_'+editId); if (dr) dr.classList.remove('open'); }
+  editId = null;
+}
+function updateDebt() {
+  const d = state.debts.find(x=>x.id===editId);
+  if (!d) return;
+  const P = 'e_' + editId + '_';
+  const bal = parseFloat(document.getElementById(P+'principal').value);
+  if (isNaN(bal) || bal < 0) { toast("请输入有效剩余本金"); return; }
+  d.name = document.getElementById(P+'name').value.trim() || d.name;
+  d.type = document.getElementById(P+'type').value;
+  d.balance = bal; // 仅更新当前剩余本金，保留原始本金用于进度计算（避免还款进度被清零）
+  d.apr = parseFloat(document.getElementById(P+'apr').value)||0;
+  d.min = parseFloat(document.getElementById(P+'min').value)||0;
+  d.due = parseInt(document.getElementById(P+'due').value)||1;
+  d.method = formMethod;
+  d.term = parseInt(document.getElementById(P+'term').value)||0;
+  // 若改为先息后本且最低还款未体现利息，则按利息补算
+  if (d.method === "interestOnly" && (d.min||0) === 0) d.min = Math.round(d.principal * (d.apr/100/12));
+  editId = null;
+  renderDebts(); save();
+}
+function deleteDebt(id) {
+  const d = state.debts.find(x=>x.id===id);
+  if (!d) return;
+  confirmDelete("删除债务", "确定删除「"+d.name+"」这笔债务吗？\n删除后该债的还款记录仍保留在记账页，但计划与看板不再统计它，相关数据会重新计算。", () => {
+    state.debts = state.debts.filter(x=>x.id!==id);
+    recomputeActual();
+    renderDebts(); save();
+  });
+}
+function deleteTx(id) {
+  const t = state.tx.find(x=>x.id===id);
+  if (!t) return;
+  const label = t.type==="repay" ? ("还款·"+(state.debts.find(d=>d.id===t.debtId)?.name||"")) : (t.cat||"记录");
+  confirmDelete("删除记录", "确定删除这条「"+label+" · "+money(t.amount)+"」记录吗？\n删除后相关债务的还款统计会重新计算。", () => {
+    state.tx = state.tx.filter(x=>x.id!==id);
+    recomputeActual();
+    renderLedger(); save();
+  });
+}
+function showImport() { document.getElementById("importForm").classList.remove("hide"); }
+function hideImport() { document.getElementById("importForm").classList.add("hide"); }
+function exportData() {
+  const blob = new Blob([JSON.stringify({ state, nextId }, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "还款计划备份_"+todayStr+".json";
+  a.click();
+}
+function exportCsv() {
+  const rows = [["日期","类型","分类/债务","金额","备注"]];
+  state.tx.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(t=>{
+    const type = t.type==="in"?"收入":t.type==="out"?"支出":"还款";
+    const cat = t.type==="repay" ? ("还款·"+(state.debts.find(d=>d.id===t.debtId)?.name||"")) : t.cat;
+    rows.push([t.date, type, cat, t.amount, t.note||""]);
+  });
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n");
+  const blob = new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "收支流水_"+todayStr+".csv";
+  a.click();
+}
+function importData() {
+  const raw = document.getElementById("importBox").value.trim();
+  if (!raw) { toast("请粘贴备份内容"); return; }
+  try {
+    const o = JSON.parse(raw);
+    if (!o.state || !o.state.debts) throw new Error("格式不正确");
+    Object.assign(state, o.state);
+    nextId = o.nextId || nextId;
+    recomputeActual();
+    save();
+    location.reload();
+  } catch(e) { toast("导入失败：" + e.message); }
+}
+
+function addTx() {
+  const typeBtn = state.txType || "in";
+  let cat = "", debtId = null, d = null;
+  if (typeBtn === "repay") {
+    debtId = parseInt(document.getElementById("t_debt").value);
+    d = state.debts.find(x=>x.id===debtId);
+    if (!d) { toast("请选择还款债务"); return; }
+    cat = "还款·" + d.name;
+  } else {
+    cat = document.getElementById("t_cat").value.trim();
+    if (!cat) { toast("请输入分类"); return; }
+  }
+  const amount = parseFloat(document.getElementById("t_amt").value);
+  if (isNaN(amount) || amount <= 0) { toast("请输入有效金额"); return; }
+  if (typeBtn === "repay" && d) d.balance = Math.max(0, d.balance - amount);
+  state.tx.push({ id: nextId++, type: typeBtn, cat, amount, debtId, note: document.getElementById("t_note").value, date: todayStr });
+  // 保证当前筛选包含今天，新记录立即可见
+  const f = state.ledgerFilter;
+  const prefix = f.mode === "year" ? (f.year + "-") : (f.year + "-" + String(f.month).padStart(2, "0"));
+  if (!todayStr.startsWith(prefix)) state.ledgerFilter = { mode: "month", year: TODAY.getFullYear(), month: TODAY.getMonth() + 1 };
+  state.txType = "in";
+  // 先刷新界面：即使后续计算/存储出错，新增记录也一定显示在底部明细
+  renderLedger();
+  try { recomputeActual(); } catch (e) { console.warn("recomputeActual err", e); }
+  try { save(); } catch (e) { console.warn("save err", e); }
+  toast("已保存 ✓");
+}
+
+const titles = { dashboard:"还款看板", debts:"我的债务", ledger:"记一笔", plan:"还款计划" };
+function switchTab(tab) {
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===tab));
+  document.getElementById("pageTitle").textContent = titles[tab];
+  ({ dashboard:renderDashboard, debts:renderDebts, ledger:renderLedger, plan:renderPlan })[tab]();
+}
+document.querySelectorAll(".tab").forEach(t=> t.onclick = ()=> switchTab(t.dataset.tab));
+
+recomputeActual();
+renderDashboard();
+
+// PWA：注册 Service Worker，实现离线可用与「添加到主屏幕」安装
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(err => console.warn("SW 注册失败：", err));
+  });
+}
+</script>
+</body>
+</html>
